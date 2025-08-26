@@ -1,0 +1,20 @@
+{
+	"geolocation": {
+		"data": {
+			"city": "Caloocan City",
+			"country": {
+				"code": "PH",
+				"name": "Philippines"
+			},
+			"subdivision": {
+				"code": "00",
+				"name": "Metro Manila"
+			},
+			"timezone": "Asia/Manila",
+			"latitude": 14.647,
+			"longitude": 120.9572,
+			"postalCode": "1409"
+		},
+		"timestamp": 1756178483064
+	}
+}
