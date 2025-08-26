@@ -1,0 +1,2067 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sales Manager Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --secondary: #3498db;
+            --success: #2ecc71;
+            --warning: #f39c12;
+            --danger: #e74c3c;
+            --light-bg: #f8f9fa;
+            --card-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f7f9;
+            color: #333;
+            overflow-x: hidden;
+        }
+
+        .navbar {
+            background-color: var(--primary);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .sidebar {
+            background-color: white;
+            border-right: 1px solid #dee2e6;
+            height: calc(100vh - 56px);
+            position: sticky;
+            top: 56px;
+            padding-top: 20px;
+            box-shadow: var(--card-shadow);
+            overflow-y: auto;
+        }
+
+            .sidebar .nav-link {
+                color: #495057;
+                padding: 12px 20px;
+                border-left: 4px solid transparent;
+                margin-bottom: 5px;
+            }
+
+                .sidebar .nav-link:hover, .sidebar .nav-link.active {
+                    background-color: #e9ecef;
+                    border-left-color: var(--secondary);
+                    color: var(--secondary);
+                }
+
+                .sidebar .nav-link i {
+                    margin-right: 10px;
+                    width: 24px;
+                    text-align: center;
+                }
+
+        .card {
+            border: none;
+            border-radius: 8px;
+            box-shadow: var(--card-shadow);
+            margin-bottom: 24px;
+            transition: transform 0.2s;
+        }
+
+            .card:hover {
+                transform: translateY(-5px);
+            }
+
+        .card-header {
+            background-color: white;
+            border-bottom: 1px solid #eaecef;
+            font-weight: 600;
+            padding: 15px 20px;
+            border-radius: 8px 8px 0 0 !important;
+        }
+
+        .kpi-badge {
+            font-size: 0.9rem;
+            padding: 5px 10px;
+            border-radius: 20px;
+        }
+
+        .stats-number {
+            font-size: 1.8rem;
+            font-weight: 700;
+        }
+
+        .stats-label {
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+
+        .filter-section {
+            background-color: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: var(--card-shadow);
+            margin-bottom: 24px;
+        }
+
+        .progress {
+            height: 8px;
+            margin-bottom: 10px;
+        }
+
+        .upload-btn {
+            background-color: var(--secondary);
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+            .upload-btn:hover {
+                background-color: #2980b9;
+            }
+
+        .notification-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background-color: var(--danger);
+            color: white;
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            font-size: 0.7rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 250px;
+            width: 100%;
+        }
+
+        .toast-container {
+            position: fixed;
+            top: 70px;
+            right: 20px;
+            z-index: 9999;
+        }
+
+        .data-table {
+            font-size: 0.9rem;
+        }
+
+            .data-table th {
+                background-color: #f8f9fa;
+            }
+
+        .dashboard-section {
+            display: none;
+        }
+
+            .dashboard-section.active {
+                display: block;
+            }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                height: auto;
+                position: static;
+            }
+
+            .stats-number {
+                font-size: 1.5rem;
+            }
+
+            .chart-container {
+                height: 200px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-chart-line me-2"></i>
+                Sales Performance Dashboard
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-user-circle"></i> John Smith
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="#"><i class="fas fa-cog me-2"></i>Settings</a></li>
+                            <li><a class="dropdown-item" href="#"><i class="fas fa-question-circle me-2"></i>Help</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="#"><i class="fas fa-sign-out-alt me-2"></i>Logout</a></li>
+                        </ul>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link position-relative" href="#" id="notifications">
+                            <i class="fas fa-bell"></i>
+                            <span class="notification-badge">3</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            <div class="col-lg-2 col-md-3 p-0 sidebar">
+                <nav class="nav flex-column">
+                    <a class="nav-link active" href="#" data-section="dashboard">
+                        <i class="fas fa-home"></i> Dashboard
+                    </a>
+                    <a class="nav-link" href="#" data-section="targets">
+                        <i class="fas fa-target"></i> Targets
+                    </a>
+                    <a class="nav-link" href="#" data-section="reports">
+                        <i class="fas fa-chart-bar"></i> Reports
+                    </a>
+                    <a class="nav-link" href="#" data-section="team-performance">
+                        <i class="fas fa-users"></i> Team Performance
+                    </a>
+                    <a class="nav-link" href="#" data-section="regional-sales">
+                        <i class="fas fa-store"></i> Regional Sales
+                    </a>
+                    <a class="nav-link" href="#" data-section="products">
+                        <i class="fas fa-box"></i> Products
+                    </a>
+                    <a class="nav-link" href="#" data-section="settings">
+                        <i class="fas fa-cog"></i> Settings
+                    </a>
+                </nav>
+
+                <div class="mt-4 px-3">
+                    <h6 class="text-uppercase small fw-bold text-muted mb-3">Data Management</h6>
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#uploadModal">
+                            <i class="fas fa-upload me-2"></i> Upload Excel File
+                        </button>
+                    </div>
+                    <div class="mt-3">
+                        <p class="small text-muted">Last updated: <span id="lastUpdateTime">Today, 09:42 AM</span></p>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="autoUpdateSwitch" checked>
+                            <label class="form-check-label small" for="autoUpdateSwitch">Auto-sync data</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content -->
+            <div class="col-lg-10 col-md-9 mt-4">
+                <!-- Dashboard Section -->
+                <div id="dashboard" class="dashboard-section active">
+                    <!-- Filters -->
+                    <div class="filter-section">
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <label class="form-label small fw-bold">Date Range</label>
+                                <select class="form-select" id="dateRange">
+                                    <option>Last 7 days</option>
+                                    <option selected>Month to Date</option>
+                                    <option>Quarter to Date</option>
+                                    <option>Year to Date</option>
+                                    <option>Custom Range</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label small fw-bold">Region</label>
+                                <select class="form-select" id="regionFilter">
+                                    <option selected>All Regions</option>
+                                    <option>North America</option>
+                                    <option>Europe</option>
+                                    <option>Asia Pacific</option>
+                                    <option>Latin America</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label small fw-bold">Sales Rep</label>
+                                <select class="form-select" id="salesRepFilter">
+                                    <option selected>All Reps</option>
+                                    <option>John Doe</option>
+                                    <option>Jane Smith</option>
+                                    <option>Robert Johnson</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label small fw-bold">Product Category</label>
+                                <select class="form-select" id="productCategoryFilter">
+                                    <option selected>All Categories</option>
+                                    <option>Electronics</option>
+                                    <option>Furniture</option>
+                                    <option>Apparel</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-bold">Customer Segment</label>
+                                <select class="form-select" id="customerSegmentFilter">
+                                    <option selected>All Segments</option>
+                                    <option>Enterprise</option>
+                                    <option>Small Business</option>
+                                    <option>Individual</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Performance Overview -->
+                    <h4 class="mb-4">Performance Overview</h4>
+                    <div class="row">
+                        <div class="col-xl-3 col-md-6">
+                            <div class="card">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <p class="stats-label">Total Sales (MTD)</p>
+                                            <h3 class="stats-number">$248,560</h3>
+                                        </div>
+                                        <div class="bg-success bg-opacity-10 p-3 rounded">
+                                            <i class="fas fa-dollar-sign fa-2x text-success"></i>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex align-items-center mt-2">
+                                        <span class="badge bg-success me-2">+12.5%</span>
+                                        <span class="small text-muted">vs previous month</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-xl-3 col-md-6">
+                            <div class="card">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <p class="stats-label">Sales vs Target</p>
+                                            <h3 class="stats-number">94.8%</h3>
+                                        </div>
+                                        <div class="bg-warning bg-opacity-10 p-3 rounded">
+                                            <i class="fas fa-bullseye fa-2x text-warning"></i>
+                                        </div>
+                                    </div>
+                                    <div class="progress">
+                                        <div class="progress-bar bg-warning" role="progressbar" style="width: 94.8%"></div>
+                                    </div>
+                                    <p class="small text-muted mb-0">$12,340 remaining to target</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-xl-3 col-md-6">
+                            <div class="card">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <p class="stats-label">Conversion Rate</p>
+                                            <h3 class="stats-number">34.2%</h3>
+                                        </div>
+                                        <div class="bg-info bg-opacity-10 p-3 rounded">
+                                            <i class="fas fa-exchange-alt fa-2x text-info"></i>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex align-items-center mt-2">
+                                        <span class="badge bg-success me-2">+3.2%</span>
+                                        <span class="small text-muted">vs last month</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-xl-3 col-md-6">
+                            <div class="card">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <p class="stats-label">Average Deal Size</p>
+                                            <h3 class="stats-number">$12,450</h3>
+                                        </div>
+                                        <div class="bg-primary bg-opacity-10 p-3 rounded">
+                                            <i class="fas fa-chart-pie fa-2x text-primary"></i>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex align-items-center mt-2">
+                                        <span class="badge bg-success me-2">+8.7%</span>
+                                        <span class="small text-muted">vs last quarter</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Charts and Additional Metrics -->
+                    <div class="row mt-4">
+                        <div class="col-lg-8">
+                            <div class="card">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <span>Sales Trend (Last 6 Months)</span>
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <button type="button" class="btn btn-outline-secondary active" id="monthlyView">Monthly</button>
+                                        <button type="button" class="btn btn-outline-secondary" id="quarterlyView">Quarterly</button>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <div class="chart-container">
+                                        <canvas id="salesTrendChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-4">
+                            <div class="card">
+                                <div class="card-header">Sales by Region</div>
+                                <div class="card-body">
+                                    <div class="chart-container">
+                                        <canvas id="regionChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Target & Forecasting -->
+                    <h4 class="my-4">Target & Forecasting</h4>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">Quarterly Targets vs Actual</div>
+                                <div class="card-body">
+                                    <div class="chart-container">
+                                        <canvas id="targetChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">Pipeline Value by Stage</div>
+                                <div class="card-body">
+                                    <div class="chart-container">
+                                        <canvas id="pipelineChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Team Performance -->
+                    <h4 class="my-4">Team Performance</h4>
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <span>Sales Rep Performance</span>
+                                    <button class="btn btn-sm btn-outline-primary" id="viewDetailsBtn">View Details</button>
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-hover data-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Sales Rep</th>
+                                                    <th>Deals Closed</th>
+                                                    <th>Revenue</th>
+                                                    <th>Quota Attainment</th>
+                                                    <th>Activity</th>
+                                                    <th>Trend</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="teamPerformanceTable">
+                                                <tr>
+                                                    <td>John Doe</td>
+                                                    <td>24</td>
+                                                    <td>$124,560</td>
+                                                    <td>
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="progress flex-grow-1 me-2" style="height: 6px;">
+                                                                <div class="progress-bar bg-success" style="width: 92%"></div>
+                                                            </div>
+                                                            <span>92%</span>
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge bg-info">78 calls</span>
+                                                        <span class="badge bg-primary">24 meetings</span>
+                                                    </td>
+                                                    <td><i class="fas fa-arrow-up text-success"></i></td>
+                                                </tr>
+                                                <tr>
+                                                    <td>Jane Smith</td>
+                                                    <td>19</td>
+                                                    <td>$98,430</td>
+                                                    <td>
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="progress flex-grow-1 me-2" style="height: 6px;">
+                                                                <div class="progress-bar bg-success" style="width: 87%"></div>
+                                                            </div>
+                                                            <span>87%</span>
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge bg-info">64 calls</span>
+                                                        <span class="badge bg-primary">19 meetings</span>
+                                                    </td>
+                                                    <td><i class="fas fa-arrow-up text-success"></i></td>
+                                                </tr>
+                                                <tr>
+                                                    <td>Robert Johnson</td>
+                                                    <td>16</td>
+                                                    <td>$85,120</td>
+                                                    <td>
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="progress flex-grow-1 me-2" style="height: 6px;">
+                                                                <div class="progress-bar bg-warning" style="width: 76%"></div>
+                                                            </div>
+                                                            <span>76%</span>
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge bg-info">52 calls</span>
+                                                        <span class="badge bg-primary">16 meetings</span>
+                                                    </td>
+                                                    <td><i class="fas fa-arrow-down text-danger"></i></td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Targets Section -->
+                <div id="targets" class="dashboard-section">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h4>Sales Targets & Forecasting</h4>
+                        <button class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-plus me-1"></i> Set New Target
+                        </button>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">Annual Target Progress</div>
+                                <div class="card-body">
+                                    <div class="chart-container">
+                                        <canvas id="annualTargetChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">Quarterly Target Status</div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-sm">
+                                            <thead>
+                                                <tr>
+                                                    <th>Quarter</th>
+                                                    <th>Target</th>
+                                                    <th>Achieved</th>
+                                                    <th>Progress</th>
+                                                    <th>Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr>
+                                                    <td>Q1 2023</td>
+                                                    <td>$650,000</td>
+                                                    <td>$680,000</td>
+                                                    <td>
+                                                        <div class="progress" style="height: 6px;">
+                                                            <div class="progress-bar bg-success" style="width: 105%"></div>
+                                                        </div>
+                                                    </td>
+                                                    <td><span class="badge bg-success">Exceeded</span></td>
+                                                </tr>
+                                                <tr>
+                                                    <td>Q2 2023</td>
+                                                    <td>$720,000</td>
+                                                    <td>$710,000</td>
+                                                    <td>
+                                                        <div class="progress" style="height: 6px;">
+                                                            <div class="progress-bar bg-warning" style="width: 98%"></div>
+                                                        </div>
+                                                    </td>
+                                                    <td><span class="badge bg-warning">On Track</span></td>
+                                                </tr>
+                                                <tr>
+                                                    <td>Q3 2023</td>
+                                                    <td>$780,000</td>
+                                                    <td>$750,000</td>
+                                                    <td>
+                                                        <div class="progress" style="height: 6px;">
+                                                            <div class="progress-bar bg-warning" style="width: 96%"></div>
+                                                        </div>
+                                                    </td>
+                                                    <td><span class="badge bg-warning">On Track</span></td>
+                                                </tr>
+                                                <tr>
+                                                    <td>Q4 2023</td>
+                                                    <td>$800,000</td>
+                                                    <td>$248,560</td>
+                                                    <td>
+                                                        <div class="progress" style="height: 6px;">
+                                                            <div class="progress-bar bg-danger" style="width: 31%"></div>
+                                                        </div>
+                                                    </td>
+                                                    <td><span class="badge bg-danger">At Risk</span></td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mt-4">
+                        <div class="col-md-12">
+                            <div class="card">
+                                <div class="card-header">Forecast vs Target</div>
+                                <div class="card-body">
+                                    <div class="chart-container">
+                                        <canvas id="forecastChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Reports Section -->
+                <div id="reports" class="dashboard-section">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h4>Sales Reports</h4>
+                        <div>
+                            <button class="btn btn-sm btn-outline-primary me-2">
+                                <i class="fas fa-download me-1"></i> Export PDF
+                            </button>
+                            <button class="btn btn-sm btn-outline-success">
+                                <i class="fas fa-file-excel me-1"></i> Export Excel
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">Top Products Report</div>
+                                <div class="card-body">
+                                    <div class="chart-container">
+                                        <canvas id="topProductsChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">Sales Channel Performance</div>
+                                <div class="card-body">
+                                    <div class="chart-container">
+                                        <canvas id="salesChannelChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mt-4">
+                        <div class="col-md-12">
+                            <div class="card">
+                                <div class="card-header">Detailed Sales Report</div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-striped table-sm">
+                                            <thead>
+                                                <tr>
+                                                    <th>Product</th>
+                                                    <th>Region</th>
+                                                    <th>Sales Rep</th>
+                                                    <th>Units Sold</th>
+                                                    <th>Revenue</th>
+                                                    <th>Profit</th>
+                                                    <th>Date</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr>
+                                                    <td>Premium Widget</td>
+                                                    <td>North America</td>
+                                                    <td>John Doe</td>
+                                                    <td>120</td>
+                                                    <td>$24,500</td>
+                                                    <td>$8,200</td>
+                                                    <td>2023-10-15</td>
+                                                </tr>
+                                                <tr>
+                                                    <td>Standard Widget</td>
+                                                    <td>Europe</td>
+                                                    <td>Jane Smith</td>
+                                                    <td>85</td>
+                                                    <td>$12,800</td>
+                                                    <td>$4,100</td>
+                                                    <td>2023-10-14</td>
+                                                </tr>
+                                                <tr>
+                                                    <td>Deluxe Package</td>
+                                                    <td>Asia Pacific</td>
+                                                    <td>Robert Johnson</td>
+                                                    <td>45</td>
+                                                    <td>$18,900</td>
+                                                    <td>$7,500</td>
+                                                    <td>2023-10-13</td>
+                                                </tr>
+                                                <tr>
+                                                    <td>Basic Package</td>
+                                                    <td>North America</td>
+                                                    <td>John Doe</td>
+                                                    <td>210</td>
+                                                    <td>$25,200</td>
+                                                    <td>$9,800</td>
+                                                    <td>2023-10-12</td>
+                                                </tr>
+                                                <tr>
+                                                    <td>Enterprise Solution</td>
+                                                    <td>Europe</td>
+                                                    <td>Jane Smith</td>
+                                                    <td>12</td>
+                                                    <td>$42,000</td>
+                                                    <td>$18,200</td>
+                                                    <td>2023-10-11</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <nav aria-label="Report pagination">
+                                        <ul class="pagination justify-content-center mt-3">
+                                            <li class="page-item disabled">
+                                                <a class="page-link" href="#" tabindex="-1">Previous</a>
+                                            </li>
+                                            <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                                            <li class="page-item"><a class="page-link" href="#">2</a></li>
+                                            <li class="page-item"><a class="page-link" href="#">3</a></li>
+                                            <li class="page-item">
+                                                <a class="page-link" href="#">Next</a>
+                                            </li>
+                                        </ul>
+                                    </nav>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Team Performance Section -->
+                <div id="team-performance" class="dashboard-section">
+                    <h4 class="mb-4">Team Performance</h4>
+
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="card">
+                                <div class="card-body text-center">
+                                    <img src="https://ui-avatars.com/api/?name=John+Doe&background=3498db&color=fff&size=80" class="rounded-circle mb-3" alt="John Doe">
+                                    <h5>John Doe</h5>
+                                    <p class="text-muted">Senior Sales Executive</p>
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span>Quota Attainment:</span>
+                                        <strong>92%</strong>
+                                    </div>
+                                    <div class="progress mb-3" style="height: 8px;">
+                                        <div class="progress-bar bg-success" style="width: 92%"></div>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span>Deals Closed:</span>
+                                        <strong>24</strong>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span>Revenue:</span>
+                                        <strong>$124,560</strong>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-3">
+                                        <span>Activity:</span>
+                                        <div>
+                                            <span class="badge bg-info">78 calls</span>
+                                            <span class="badge bg-primary">24 meetings</span>
+                                        </div>
+                                    </div>
+                                    <button class="btn btn-sm btn-outline-primary w-100">View Details</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card">
+                                <div class="card-body text-center">
+                                    <img src="https://ui-avatars.com/api/?name=Jane+Smith&background=e74c3c&color=fff&size=80" class="rounded-circle mb-3" alt="Jane Smith">
+                                    <h5>Jane Smith</h5>
+                                    <p class="text-muted">Sales Executive</p>
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span>Quota Attainment:</span>
+                                        <strong>87%</strong>
+                                    </div>
+                                    <div class="progress mb-3" style="height: 8px;">
+                                        <div class="progress-bar bg-success" style="width: 87%"></div>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span>Deals Closed:</span>
+                                        <strong>19</strong>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span>Revenue:</span>
+                                        <strong>$98,430</strong>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-3">
+                                        <span>Activity:</span>
+                                        <div>
+                                            <span class="badge bg-info">64 calls</span>
+                                            <span class="badge bg-primary">19 meetings</span>
+                                        </div>
+                                    </div>
+                                    <button class="btn btn-sm btn-outline-primary w-100">View Details</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card">
+                                <div class="card-body text-center">
+                                    <img src="https://ui-avatars.com/api/?name=Robert+Johnson&background=f39c12&color=fff&size=80" class="rounded-circle mb-3" alt="Robert Johnson">
+                                    <h5>Robert Johnson</h5>
+                                    <p class="text-muted">Sales Executive</p>
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span>Quota Attainment:</span>
+                                        <strong>76%</strong>
+                                    </div>
+                                    <div class="progress mb-3" style="height: 8px;">
+                                        <div class="progress-bar bg-warning" style="width: 76%"></div>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span>Deals Closed:</span>
+                                        <strong>16</strong>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span>Revenue:</span>
+                                        <strong>$85,120</strong>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-3">
+                                        <span>Activity:</span>
+                                        <div>
+                                            <span class="badge bg-info">52 calls</span>
+                                            <span class="badge bg-primary">16 meetings</span>
+                                        </div>
+                                    </div>
+                                    <button class="btn btn-sm btn-outline-primary w-100">View Details</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mt-4">
+                        <div class="col-md-12">
+                            <div class="card">
+                                <div class="card-header">Team Activity Overview</div>
+                                <div class="card-body">
+                                    <div class="chart-container">
+                                        <canvas id="teamActivityChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Regional Sales Section -->
+                <div id="regional-sales" class="dashboard-section">
+                    <h4 class="mb-4">Regional Sales Performance</h4>
+
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="card">
+                                <div class="card-header">Sales by Region</div>
+                                <div class="card-body">
+                                    <div class="chart-container">
+                                        <canvas id="regionalMapChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card">
+                                <div class="card-header">Regional Performance</div>
+                                <div class="card-body">
+                                    <div class="chart-container">
+                                        <canvas id="regionalPerformanceChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mt-4">
+                        <div class="col-md-12">
+                            <div class="card">
+                                <div class="card-header">Regional Sales Details</div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-striped table-sm">
+                                            <thead>
+                                                <tr>
+                                                    <th>Region</th>
+                                                    <th>Sales Manager</th>
+                                                    <th>QTD Sales</th>
+                                                    <th>QTD Target</th>
+                                                    <th>Progress</th>
+                                                    <th>YTD Sales</th>
+                                                    <th>Growth</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr>
+                                                    <td>North America</td>
+                                                    <td>Michael Brown</td>
+                                                    <td>$356,800</td>
+                                                    <td>$340,000</td>
+                                                    <td>
+                                                        <div class="progress" style="height: 6px;">
+                                                            <div class="progress-bar bg-success" style="width: 105%"></div>
+                                                        </div>
+                                                    </td>
+                                                    <td>$1,245,600</td>
+                                                    <td><span class="badge bg-success">+12.4%</span></td>
+                                                </tr>
+                                                <tr>
+                                                    <td>Europe</td>
+                                                    <td>Sarah Wilson</td>
+                                                    <td>$284,500</td>
+                                                    <td>$300,000</td>
+                                                    <td>
+                                                        <div class="progress" style="height: 6px;">
+                                                            <div class="progress-bar bg-warning" style="width: 95%"></div>
+                                                        </div>
+                                                    </td>
+                                                    <td>$985,400</td>
+                                                    <td><span class="badge bg-warning">+5.2%</span></td>
+                                                </tr>
+                                                <tr>
+                                                    <td>Asia Pacific</td>
+                                                    <td>David Lee</td>
+                                                    <td>$198,300</td>
+                                                    <td>$220,000</td>
+                                                    <td>
+                                                        <div class="progress" style="height: 6px;">
+                                                            <div class="progress-bar bg-warning" style="width: 90%"></div>
+                                                        </div>
+                                                    </td>
+                                                    <td>$756,200</td>
+                                                    <td><span class="badge bg-success">+8.7%</span></td>
+                                                </tr>
+                                                <tr>
+                                                    <td>Latin America</td>
+                                                    <td>Carlos Rodriguez</td>
+                                                    <td>$95,400</td>
+                                                    <td>$120,000</td>
+                                                    <td>
+                                                        <div class="progress" style="height: 6px;">
+                                                            <div class="progress-bar bg-danger" style="width: 80%"></div>
+                                                        </div>
+                                                    </td>
+                                                    <td>$356,800</td>
+                                                    <td><span class="badge bg-danger">-3.1%</span></td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Products Section -->
+                <div id="products" class="dashboard-section">
+                    <h4 class="mb-4">Product Performance</h4>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">Top Selling Products</div>
+                                <div class="card-body">
+                                    <div class="chart-container">
+                                        <canvas id="topSellingChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">Product Category Performance</div>
+                                <div class="card-body">
+                                    <div class="chart-container">
+                                        <canvas id="productCategoryChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mt-4">
+                        <div class="col-md-12">
+                            <div class="card">
+                                <div class="card-header">Product Details</div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-striped table-sm">
+                                            <thead>
+                                                <tr>
+                                                    <th>Product</th>
+                                                    <th>Category</th>
+                                                    <th>Price</th>
+                                                    <th>Units Sold</th>
+                                                    <th>Revenue</th>
+                                                    <th>Profit Margin</th>
+                                                    <th>Trend</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr>
+                                                    <td>Premium Widget</td>
+                                                    <td>Electronics</td>
+                                                    <td>$199.99</td>
+                                                    <td>1,240</td>
+                                                    <td>$247,987.60</td>
+                                                    <td>32.5%</td>
+                                                    <td><i class="fas fa-arrow-up text-success"></i></td>
+                                                </tr>
+                                                <tr>
+                                                    <td>Standard Widget</td>
+                                                    <td>Electronics</td>
+                                                    <td>$99.99</td>
+                                                    <td>2,845</td>
+                                                    <td>$284,477.55</td>
+                                                    <td>28.1%</td>
+                                                    <td><i class="fas fa-arrow-up text-success"></i></td>
+                                                </tr>
+                                                <tr>
+                                                    <td>Deluxe Package</td>
+                                                    <td>Software</td>
+                                                    <td>$499.99</td>
+                                                    <td>385</td>
+                                                    <td>$192,496.15</td>
+                                                    <td>45.2%</td>
+                                                    <td><i class="fas fa-arrow-up text-success"></i></td>
+                                                </tr>
+                                                <tr>
+                                                    <td>Basic Package</td>
+                                                    <td>Software</td>
+                                                    <td>$199.99</td>
+                                                    <td>1,025</td>
+                                                    <td>$204,989.75</td>
+                                                    <td>38.7%</td>
+                                                    <td><i class="fas fa-arrow-down text-danger"></i></td>
+                                                </tr>
+                                                <tr>
+                                                    <td>Enterprise Solution</td>
+                                                    <td>Services</td>
+                                                    <td>$3,499.99</td>
+                                                    <td>42</td>
+                                                    <td>$146,999.58</td>
+                                                    <td>52.4%</td>
+                                                    <td><i class="fas fa-arrow-up text-success"></i></td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <nav aria-label="Product pagination">
+                                        <ul class="pagination justify-content-center mt-3">
+                                            <li class="page-item disabled">
+                                                <a class="page-link" href="#" tabindex="-1">Previous</a>
+                                            </li>
+                                            <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                                            <li class="page-item"><a class="page-link" href="#">2</a></li>
+                                            <li class="page-item"><a class="page-link" href="#">3</a></li>
+                                            <li class="page-item">
+                                                <a class="page-link" href="#">Next</a>
+                                            </li>
+                                        </ul>
+                                    </nav>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Settings Section -->
+                <div id="settings" class="dashboard-section">
+                    <h4 class="mb-4">Dashboard Settings</h4>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">User Preferences</div>
+                                <div class="card-body">
+                                    <form>
+                                        <div class="mb-3">
+                                            <label class="form-label">Dashboard Theme</label>
+                                            <select class="form-select">
+                                                <option selected>Light</option>
+                                                <option>Dark</option>
+                                                <option>Blue</option>
+                                                <option>Green</option>
+                                            </select>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label">Default Date Range</label>
+                                            <select class="form-select">
+                                                <option>Today</option>
+                                                <option>Yesterday</option>
+                                                <option selected>Month to Date</option>
+                                                <option>Quarter to Date</option>
+                                                <option>Year to Date</option>
+                                                <option>Last 7 Days</option>
+                                                <option>Last 30 Days</option>
+                                            </select>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label">Results Per Page</label>
+                                            <select class="form-select">
+                                                <option>10</option>
+                                                <option selected>25</option>
+                                                <option>50</option>
+                                                <option>100</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-check form-switch mb-3">
+                                            <input class="form-check-input" type="checkbox" id="emailNotifications" checked>
+                                            <label class="form-check-label" for="emailNotifications">Email Notifications</label>
+                                        </div>
+                                        <div class="form-check form-switch mb-3">
+                                            <input class="form-check-input" type="checkbox" id="desktopNotifications" checked>
+                                            <label class="form-check-label" for="desktopNotifications">Desktop Notifications</label>
+                                        </div>
+                                        <button type="submit" class="btn btn-primary">Save Preferences</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">Data Sync Settings</div>
+                                <div class="card-body">
+                                    <form>
+                                        <div class="mb-3">
+                                            <label class="form-label">Auto Sync Frequency</label>
+                                            <select class="form-select">
+                                                <option>Every 15 minutes</option>
+                                                <option selected>Every 30 minutes</option>
+                                                <option>Every hour</option>
+                                                <option>Every 2 hours</option>
+                                                <option>Every 6 hours</option>
+                                                <option>Every 12 hours</option>
+                                                <option>Every 24 hours</option>
+                                            </select>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label">Data Retention Period</label>
+                                            <select class="form-select">
+                                                <option>1 month</option>
+                                                <option>3 months</option>
+                                                <option selected>6 months</option>
+                                                <option>1 year</option>
+                                                <option>2 years</option>
+                                                <option>Indefinitely</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-check form-switch mb-3">
+                                            <input class="form-check-input" type="checkbox" id="autoExport" checked>
+                                            <label class="form-check-label" for="autoExport">Auto Export Reports</label>
+                                        </div>
+                                        <div class="form-check form-switch mb-3">
+                                            <input class="form-check-input" type="checkbox" id="dataBackup" checked>
+                                            <label class="form-check-label" for="dataBackup">Automatic Data Backup</label>
+                                        </div>
+                                        <button type="submit" class="btn btn-primary">Save Sync Settings</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mt-4">
+                        <div class="col-md-12">
+                            <div class="card">
+                                <div class="card-header">User Account</div>
+                                <div class="card-body">
+                                    <form>
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label class="form-label">First Name</label>
+                                                    <input type="text" class="form-control" value="John">
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label class="form-label">Last Name</label>
+                                                    <input type="text" class="form-control" value="Smith">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label">Email Address</label>
+                                            <input type="email" class="form-control" value="john.smith@example.com">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label">Role</label>
+                                            <select class="form-select">
+                                                <option selected>Sales Manager</option>
+                                                <option>Sales Representative</option>
+                                                <option>Regional Manager</option>
+                                                <option>Administrator</option>
+                                            </select>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label">Timezone</label>
+                                            <select class="form-select">
+                                                <option>(GMT-05:00) Eastern Time</option>
+                                                <option>(GMT-06:00) Central Time</option>
+                                                <option>(GMT-07:00) Mountain Time</option>
+                                                <option selected>(GMT-08:00) Pacific Time</option>
+                                            </select>
+                                        </div>
+                                        <button type="submit" class="btn btn-primary">Update Account</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Upload Modal -->
+    <div class="modal fade" id="uploadModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Upload Excel File</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Upload your sales data Excel file for processing. Supported formats: .xlsx, .csv</p>
+
+                    <div class="mb-3">
+                        <label for="fileInput" class="form-label">Select file</label>
+                        <input class="form-control" type="file" id="fileInput" accept=".xlsx,.csv">
+                    </div>
+
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="scheduledUpload">
+                        <label class="form-check-label" for="scheduledUpload">
+                            Enable automatic sync from local folder
+                        </label>
+                    </div>
+
+                    <div id="scheduleSettings" class="bg-light p-3 rounded" style="display: none;">
+                        <div class="mb-3">
+                            <label class="form-label">Local Folder Path</label>
+                            <input type="text" class="form-control" placeholder="C:/SalesData/">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Sync Interval (minutes)</label>
+                            <input type="number" class="form-control" value="30">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="uploadProcessBtn">Upload & Process</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast for notifications -->
+    <div class="toast-container">
+        <div id="liveToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header">
+                <strong class="me-auto">Sales Dashboard</strong>
+                <small>Just now</small>
+                <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+            <div class="toast-body" id="toastMessage">
+                File uploaded successfully!
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Global variables
+        let charts = {};
+        let autoSyncInterval;
+        let sampleData = {
+            salesTrend: {
+                monthly: {
+                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul'],
+                    actual: [185, 210, 195, 230, 250, 248, 260],
+                    target: [190, 200, 210, 220, 240, 250, 255]
+                },
+                quarterly: {
+                    labels: ['Q1 2022', 'Q2 2022', 'Q3 2022', 'Q4 2022', 'Q1 2023'],
+                    actual: [580, 620, 710, 780, 820],
+                    target: [600, 650, 700, 750, 800]
+                }
+            },
+            regions: {
+                labels: ['North America', 'Europe', 'Asia Pacific', 'Latin America'],
+                data: [45, 30, 20, 5]
+            },
+            targets: {
+                labels: ['Q1', 'Q2', 'Q3', 'Q4'],
+                target: [650, 720, 780, 800],
+                actual: [680, 710, 750, 248]
+            },
+            pipeline: {
+                labels: ['Prospecting', 'Qualification', 'Proposal', 'Negotiation', 'Closed Won'],
+                data: [120, 180, 220, 150, 248]
+            }
+        };
+
+        // Initialize the dashboard
+        document.addEventListener('DOMContentLoaded', function () {
+            initCharts();
+            setupEventListeners();
+            updateLastSyncTime();
+            startAutoSync();
+            setupNavigation();
+        });
+
+        // Set up navigation between sections
+        function setupNavigation() {
+            const navLinks = document.querySelectorAll('.sidebar .nav-link');
+
+            navLinks.forEach(link => {
+                link.addEventListener('click', function (e) {
+                    e.preventDefault();
+
+                    // Remove active class from all links
+                    navLinks.forEach(navLink => navLink.classList.remove('active'));
+
+                    // Add active class to clicked link
+                    this.classList.add('active');
+
+                    // Get the section to show
+                    const sectionId = this.getAttribute('data-section');
+
+                    // Hide all sections
+                    document.querySelectorAll('.dashboard-section').forEach(section => {
+                        section.classList.remove('active');
+                    });
+
+                    // Show the selected section
+                    document.getElementById(sectionId).classList.add('active');
+
+                    // If it's not the dashboard, update the page title
+                    if (sectionId !== 'dashboard') {
+                        const sectionName = this.textContent.trim();
+                        document.title = sectionName + ' - Sales Manager Dashboard';
+                    } else {
+                        document.title = 'Sales Manager Dashboard';
+                    }
+
+                    // Show a toast notification
+                    showToast(`Now viewing ${this.textContent.trim()}`);
+                });
+            });
+        }
+
+        // Initialize all charts
+        function initCharts() {
+            // Sales Trend Chart
+            const salesTrendCtx = document.getElementById('salesTrendChart').getContext('2d');
+            charts.salesTrend = new Chart(salesTrendCtx, {
+                type: 'line',
+                data: {
+                    labels: sampleData.salesTrend.monthly.labels,
+                    datasets: [{
+                        label: 'Actual Sales',
+                        data: sampleData.salesTrend.monthly.actual,
+                        borderColor: '#3498db',
+                        backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                        fill: true,
+                        tension: 0.3
+                    }, {
+                        label: 'Target',
+                        data: sampleData.salesTrend.monthly.target,
+                        borderColor: '#e74c3c',
+                        borderDash: [5, 5],
+                        fill: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            title: {
+                                display: true,
+                                text: 'Sales ($ thousands)'
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Region Chart
+            const regionCtx = document.getElementById('regionChart').getContext('2d');
+            charts.region = new Chart(regionCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: sampleData.regions.labels,
+                    datasets: [{
+                        data: sampleData.regions.data,
+                        backgroundColor: [
+                            '#3498db',
+                            '#2ecc71',
+                            '#f39c12',
+                            '#e74c3c'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+
+            // Target Chart
+            const targetCtx = document.getElementById('targetChart').getContext('2d');
+            charts.target = new Chart(targetCtx, {
+                type: 'bar',
+                data: {
+                    labels: sampleData.targets.labels,
+                    datasets: [{
+                        label: 'Target',
+                        data: sampleData.targets.target,
+                        backgroundColor: 'rgba(52, 152, 219, 0.5)'
+                    }, {
+                        label: 'Actual',
+                        data: sampleData.targets.actual,
+                        backgroundColor: 'rgba(46, 204, 113, 0.5)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            title: {
+                                display: true,
+                                text: 'Sales ($ thousands)'
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Pipeline Chart
+            const pipelineCtx = document.getElementById('pipelineChart').getContext('2d');
+            charts.pipeline = new Chart(pipelineCtx, {
+                type: 'bar',
+                data: {
+                    labels: sampleData.pipeline.labels,
+                    datasets: [{
+                        label: 'Pipeline Value',
+                        data: sampleData.pipeline.data,
+                        backgroundColor: [
+                            '#3498db',
+                            '#2ecc71',
+                            '#f39c12',
+                            '#e74c3c',
+                            '#9b59b6'
+                        ]
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+
+            // Additional charts for other sections
+            initAdditionalCharts();
+        }
+
+        // Initialize charts for other sections
+        function initAdditionalCharts() {
+            // Annual Target Chart
+            const annualTargetCtx = document.getElementById('annualTargetChart').getContext('2d');
+            charts.annualTarget = new Chart(annualTargetCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+                    datasets: [{
+                        label: 'Monthly Target',
+                        data: [65, 70, 75, 80, 85, 90, 95, 100, 105, 110, 115, 120],
+                        backgroundColor: 'rgba(52, 152, 219, 0.5)'
+                    }, {
+                        label: 'Actual Sales',
+                        data: [68, 72, 79, 83, 88, 92, 97, 102, 98, 105, 0, 0],
+                        backgroundColor: 'rgba(46, 204, 113, 0.5)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Sales ($ thousands)'
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Forecast Chart
+            const forecastCtx = document.getElementById('forecastChart').getContext('2d');
+            charts.forecast = new Chart(forecastCtx, {
+                type: 'line',
+                data: {
+                    labels: ['Q1', 'Q2', 'Q3', 'Q4'],
+                    datasets: [{
+                        label: 'Target',
+                        data: [650, 720, 780, 800],
+                        borderColor: '#3498db',
+                        backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                        fill: true
+                    }, {
+                        label: 'Forecast',
+                        data: [680, 710, 750, 760],
+                        borderColor: '#f39c12',
+                        backgroundColor: 'rgba(243, 156, 18, 0.1)',
+                        fill: true
+                    }, {
+                        label: 'Actual',
+                        data: [680, 710, 750, 248],
+                        borderColor: '#2ecc71',
+                        backgroundColor: 'rgba(46, 204, 113, 0.1)',
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            title: {
+                                display: true,
+                                text: 'Sales ($ thousands)'
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Top Products Chart
+            const topProductsCtx = document.getElementById('topProductsChart').getContext('2d');
+            charts.topProducts = new Chart(topProductsCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Premium Widget', 'Standard Widget', 'Deluxe Package', 'Basic Package', 'Enterprise Solution'],
+                    datasets: [{
+                        label: 'Revenue',
+                        data: [247, 284, 192, 205, 147],
+                        backgroundColor: [
+                            '#3498db',
+                            '#2ecc71',
+                            '#f39c12',
+                            '#e74c3c',
+                            '#9b59b6'
+                        ]
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Revenue ($ thousands)'
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Sales Channel Chart
+            const salesChannelCtx = document.getElementById('salesChannelChart').getContext('2d');
+            charts.salesChannel = new Chart(salesChannelCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Direct Sales', 'Online', 'Retail Partners', 'Resellers'],
+                    datasets: [{
+                        data: [45, 30, 15, 10],
+                        backgroundColor: [
+                            '#3498db',
+                            '#2ecc71',
+                            '#f39c12',
+                            '#e74c3c'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+
+            // Team Activity Chart
+            const teamActivityCtx = document.getElementById('teamActivityChart').getContext('2d');
+            charts.teamActivity = new Chart(teamActivityCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['John Doe', 'Jane Smith', 'Robert Johnson'],
+                    datasets: [{
+                        label: 'Calls',
+                        data: [78, 64, 52],
+                        backgroundColor: '#3498db'
+                    }, {
+                        label: 'Meetings',
+                        data: [24, 19, 16],
+                        backgroundColor: '#2ecc71'
+                    }, {
+                        label: 'Demos',
+                        data: [18, 15, 12],
+                        backgroundColor: '#f39c12'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Activity Count'
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Regional Map Chart
+            const regionalMapCtx = document.getElementById('regionalMapChart').getContext('2d');
+            charts.regionalMap = new Chart(regionalMapCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['North America', 'Europe', 'Asia Pacific', 'Latin America'],
+                    datasets: [{
+                        label: 'QTD Sales',
+                        data: [356, 284, 198, 95],
+                        backgroundColor: '#3498db'
+                    }, {
+                        label: 'QTD Target',
+                        data: [340, 300, 220, 120],
+                        backgroundColor: '#e74c3c',
+                        type: 'line',
+                        fill: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Sales ($ thousands)'
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Regional Performance Chart
+            const regionalPerformanceCtx = document.getElementById('regionalPerformanceChart').getContext('2d');
+            charts.regionalPerformance = new Chart(regionalPerformanceCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['North America', 'Europe', 'Asia Pacific', 'Latin America'],
+                    datasets: [{
+                        data: [45, 30, 20, 5],
+                        backgroundColor: [
+                            '#3498db',
+                            '#2ecc71',
+                            '#f39c12',
+                            '#e74c3c'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+
+            // Top Selling Chart
+            const topSellingCtx = document.getElementById('topSellingChart').getContext('2d');
+            charts.topSelling = new Chart(topSellingCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Premium Widget', 'Standard Widget', 'Deluxe Package', 'Basic Package', 'Enterprise Solution'],
+                    datasets: [{
+                        label: 'Units Sold',
+                        data: [1240, 2845, 385, 1025, 42],
+                        backgroundColor: [
+                            '#3498db',
+                            '#2ecc71',
+                            '#f39c12',
+                            '#e74c3c',
+                            '#9b59b6'
+                        ]
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Units Sold'
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Product Category Chart
+            const productCategoryCtx = document.getElementById('productCategoryChart').getContext('2d');
+            charts.productCategory = new Chart(productCategoryCtx, {
+                type: 'pie',
+                data: {
+                    labels: ['Electronics', 'Software', 'Services', 'Accessories'],
+                    datasets: [{
+                        data: [45, 30, 20, 5],
+                        backgroundColor: [
+                            '#3498db',
+                            '#2ecc71',
+                            '#f39c12',
+                            '#e74c3c'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+
+        // Set up event listeners
+        function setupEventListeners() {
+            // Toggle schedule settings visibility
+            document.getElementById('scheduledUpload').addEventListener('change', function () {
+                document.getElementById('scheduleSettings').style.display = this.checked ? 'block' : 'none';
+            });
+
+            // Upload and process button
+            document.getElementById('uploadProcessBtn').addEventListener('click', handleFileUpload);
+
+            // Monthly/Quarterly view toggle
+            document.getElementById('monthlyView').addEventListener('click', function () {
+                this.classList.add('active');
+                document.getElementById('quarterlyView').classList.remove('active');
+                updateSalesTrendChart('monthly');
+            });
+
+            document.getElementById('quarterlyView').addEventListener('click', function () {
+                this.classList.add('active');
+                document.getElementById('monthlyView').classList.remove('active');
+                updateSalesTrendChart('quarterly');
+            });
+
+            // Auto sync toggle
+            document.getElementById('autoUpdateSwitch').addEventListener('change', function () {
+                if (this.checked) {
+                    startAutoSync();
+                    showToast('Auto sync enabled');
+                } else {
+                    stopAutoSync();
+                    showToast('Auto sync disabled');
+                }
+            });
+
+            // Filter changes
+            const filters = ['dateRange', 'regionFilter', 'salesRepFilter', 'productCategoryFilter', 'customerSegmentFilter'];
+            filters.forEach(filterId => {
+                document.getElementById(filterId).addEventListener('change', function () {
+                    applyFilters();
+                });
+            });
+
+            // View details button
+            document.getElementById('viewDetailsBtn').addEventListener('click', function () {
+                showToast('Detailed team performance report generated');
+            });
+        }
+
+        // Handle file upload
+        function handleFileUpload() {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+
+            if (!file) {
+                showToast('Please select a file to upload', 'error');
+                return;
+            }
+
+            const fileExtension = file.name.split('.').pop().toLowerCase();
+            if (fileExtension !== 'xlsx' && fileExtension !== 'csv') {
+                showToast('Please upload a valid Excel or CSV file', 'error');
+                return;
+            }
+
+            // Show loading state
+            const uploadBtn = document.getElementById('uploadProcessBtn');
+            const originalText = uploadBtn.innerHTML;
+            uploadBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...';
+            uploadBtn.disabled = true;
+
+            // Simulate file processing
+            setTimeout(() => {
+                // Process the file with SheetJS
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+
+                        // Simulate data extraction and update
+                        simulateDataUpdate(workbook);
+
+                        // Update UI
+                        updateLastSyncTime();
+                        showToast('File uploaded and data processed successfully');
+
+                        // Close modal
+                        bootstrap.Modal.getInstance(document.getElementById('uploadModal')).hide();
+                    } catch (error) {
+                        console.error('Error processing file:', error);
+                        showToast('Error processing file: ' + error.message, 'error');
+                    } finally {
+                        // Reset button state
+                        uploadBtn.innerHTML = originalText;
+                        uploadBtn.disabled = false;
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            }, 2000);
+        }
+
+        // Simulate data update from Excel file
+        function simulateDataUpdate(workbook) {
+            // In a real application, you would parse the Excel data and update the charts
+            // For this demo, we'll just slightly modify the sample data to simulate an update
+
+            // Modify sales data
+            sampleData.salesTrend.monthly.actual = sampleData.salesTrend.monthly.actual.map(
+                value => value * (0.95 + Math.random() * 0.1)
+            );
+
+            // Modify regional data
+            sampleData.regions.data = sampleData.regions.data.map(
+                value => value * (0.9 + Math.random() * 0.2)
+            );
+
+            // Normalize to 100%
+            const regionSum = sampleData.regions.data.reduce((a, b) => a + b, 0);
+            sampleData.regions.data = sampleData.regions.data.map(value => (value / regionSum) * 100);
+
+            // Update all charts
+            updateAllCharts();
+
+            // Update team performance table with random changes
+            const table = document.getElementById('teamPerformanceTable');
+            const rows = table.getElementsByTagName('tr');
+
+            for (let i = 0; i < rows.length; i++) {
+                const cells = rows[i].getElementsByTagName('td');
+                if (cells.length >= 3) {
+                    // Update revenue
+                    const revenueText = cells[2].textContent;
+                    const revenue = parseFloat(revenueText.replace(/[^0-9.]/g, ''));
+                    const newRevenue = revenue * (0.9 + Math.random() * 0.2);
+                    cells[2].textContent = '$' + Math.round(newRevenue).toLocaleString();
+
+                    // Update quota attainment
+                    const progressBar = cells[3].querySelector('.progress-bar');
+                    const attainmentText = cells[3].querySelector('span');
+                    const newAttainment = Math.min(100, Math.round(parseFloat(attainmentText.textContent) * (0.95 + Math.random() * 0.1)));
+                    progressBar.style.width = newAttainment + '%';
+                    progressBar.className = 'progress-bar ' + (
+                        newAttainment >= 90 ? 'bg-success' :
+                            newAttainment >= 75 ? 'bg-warning' : 'bg-danger'
+                    );
+                    attainmentText.textContent = newAttainment + '%';
+
+                    // Update trend indicator
+                    const trendIcon = cells[5].querySelector('i');
+                    const isImproving = Math.random() > 0.3;
+                    trendIcon.className = isImproving ? 'fas fa-arrow-up text-success' : 'fas fa-arrow-down text-danger';
+                }
+            }
+        }
+
+        // Update sales trend chart based on view type
+        function updateSalesTrendChart(viewType) {
+            charts.salesTrend.data.labels = sampleData.salesTrend[viewType].labels;
+            charts.salesTrend.data.datasets[0].data = sampleData.salesTrend[viewType].actual;
+            charts.salesTrend.data.datasets[1].data = sampleData.salesTrend[viewType].target;
+            charts.salesTrend.update();
+        }
+
+        // Update all charts with current data
+        function updateAllCharts() {
+            // Update sales trend chart (monthly view)
+            charts.salesTrend.data.datasets[0].data = sampleData.salesTrend.monthly.actual;
+            charts.salesTrend.data.datasets[1].data = sampleData.salesTrend.monthly.target;
+            charts.salesTrend.update();
+
+            // Update region chart
+            charts.region.data.datasets[0].data = sampleData.regions.data;
+            charts.region.update();
+
+            // Update target chart
+            charts.target.data.datasets[0].data = sampleData.targets.target;
+            charts.target.data.datasets[1].data = sampleData.targets.actual;
+            charts.target.update();
+
+            // Update pipeline chart
+            charts.pipeline.data.datasets[0].data = sampleData.pipeline.data;
+            charts.pipeline.update();
+        }
+
+        // Apply filters to dashboard
+        function applyFilters() {
+            // In a real application, you would filter the data based on the selected filters
+            // For this demo, we'll just show a toast notification
+            const dateRange = document.getElementById('dateRange').value;
+            const region = document.getElementById('regionFilter').value;
+            const salesRep = document.getElementById('salesRepFilter').value;
+
+            showToast(`Filters applied: ${dateRange}, ${region}, ${salesRep}`);
+        }
+
+        // Update last sync time
+        function updateLastSyncTime() {
+            const now = new Date();
+            const options = {
+                weekday: 'short',
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            };
+            document.getElementById('lastUpdateTime').textContent = now.toLocaleDateString('en-US', options);
+        }
+
+        // Start auto sync
+        function startAutoSync() {
+            // Check if auto sync is enabled
+            if (document.getElementById('autoUpdateSwitch').checked) {
+                // In a real application, this would sync with a backend
+                // For this demo, we'll just update the last sync time periodically
+                autoSyncInterval = setInterval(() => {
+                    updateLastSyncTime();
+                    showToast('Data auto-synced with server', 'info');
+                }, 300000); // Every 5 minutes
+            }
+        }
+
+        // Stop auto sync
+        function stopAutoSync() {
+            if (autoSyncInterval) {
+                clearInterval(autoSyncInterval);
+            }
+        }
+
+        // Show toast notification
+        function showToast(message, type = 'success') {
+            const toastEl = document.getElementById('liveToast');
+            const toastMessage = document.getElementById('toastMessage');
+
+            // Set message and style based on type
+            toastMessage.textContent = message;
+
+            if (type === 'error') {
+                toastEl.querySelector('.toast-header').className = 'toast-header bg-danger text-white';
+            } else if (type === 'info') {
+                toastEl.querySelector('.toast-header').className = 'toast-header bg-info text-white';
+            } else {
+                toastEl.querySelector('.toast-header').className = 'toast-header bg-success text-white';
+            }
+
+            // Show the toast
+            const toast = new bootstrap.Toast(toastEl);
+            toast.show();
+        }
+    </script>
+</body>
+</html>
