@@ -751,10 +751,9 @@ function showToast(message, type = 'success') {
 
 // --- Request for Stock --- //
 
-document.addEventListener('DOMContentLoaded', function() {
-    const uploadButton = document.getElementById('upload-stock-file-button');
-    if (uploadButton) {
-        uploadButton.addEventListener('click', handleStockFileUpload);
+document.body.addEventListener('click', function(event) {
+    if (event.target.id === 'upload-stock-file-button') {
+        handleStockFileUpload();
     }
 });
 
