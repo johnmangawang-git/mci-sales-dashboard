@@ -758,16 +758,19 @@ document.body.addEventListener('click', function(event) {
 });
 
 async function handleStockFileUpload() {
+    console.log('handleStockFileUpload called');
     const fileInput = document.getElementById('stock-file-input');
     const file = fileInput.files[0];
 
     if (!file) {
         showToast('Please select a file.', 'error');
+        console.error('No file selected');
         return;
     }
 
     if (file.type !== 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') {
         showToast('Invalid file type. Please select a .xlsx file.', 'error');
+        console.error('Invalid file type:', file.type);
         return;
     }
 
@@ -780,21 +783,27 @@ async function handleStockFileUpload() {
     formData.append('stockfile', file);
 
     try {
+        console.log('Sending request to serverless function...');
         const response = await fetch('/.netlify/functions/process-stock-request', {
             method: 'POST',
             body: formData
         });
 
+        console.log('Response received from serverless function:', response);
+
         if (!response.ok) {
             const errorData = await response.json();
+            console.error('Server error:', errorData);
             throw new Error(errorData.error || 'Failed to process file.');
         }
 
         const data = await response.json();
+        console.log('Data received:', data);
         renderStockGrid(data);
         showToast('File processed successfully.', 'success');
 
     } catch (error) {
+        console.error('Error during file upload:', error);
         showToast(error.message, 'error');
     } finally {
         uploadButton.innerHTML = originalButtonText;
