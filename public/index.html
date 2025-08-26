@@ -245,6 +245,10 @@
                     <a class="nav-link" href="#" data-section="settings">
                         <i class="fas fa-cog"></i> Settings
                     </a>
+                    <a class="nav-link" href="#" data-section="stock-request">
+                        <i class="fas fa-box-open"></i> Request for Stock
+                    </a>
+                </nav>
                 </nav>
 
                 <div class="mt-4 px-3">
@@ -1247,6 +1251,27 @@
                                     </form>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Request for Stock Section -->
+                <div id="stock-request" class="dashboard-section">
+                    <h4 class="mb-4">Request for Stock</h4>
+                    <div class="card">
+                        <div class="card-header">Upload Stock Request File</div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label for="stock-file-input" class="form-label">Select Excel File (.xlsx)</label>
+                                <input class="form-control" type="file" id="stock-file-input" accept=".xlsx">
+                            </div>
+                            <button class="btn btn-primary" id="upload-stock-file-button">Upload and Display</button>
+                        </div>
+                    </div>
+                    <div class="card mt-4">
+                        <div class="card-header">Stock Request Data</div>
+                        <div class="card-body">
+                            <div id="stock-grid-container" style="width:100%; height:600px; overflow: auto;"></div>
                         </div>
                     </div>
                 </div>

@@ -748,3 +748,92 @@ function showToast(message, type = 'success') {
     const toast = new bootstrap.Toast(toastEl);
     toast.show();
 }
+
+// --- Request for Stock --- //
+
+document.addEventListener('DOMContentLoaded', function() {
+    const uploadButton = document.getElementById('upload-stock-file-button');
+    if (uploadButton) {
+        uploadButton.addEventListener('click', handleStockFileUpload);
+    }
+});
+
+async function handleStockFileUpload() {
+    const fileInput = document.getElementById('stock-file-input');
+    const file = fileInput.files[0];
+
+    if (!file) {
+        showToast('Please select a file.', 'error');
+        return;
+    }
+
+    if (file.type !== 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') {
+        showToast('Invalid file type. Please select a .xlsx file.', 'error');
+        return;
+    }
+
+    const uploadButton = document.getElementById('upload-stock-file-button');
+    const originalButtonText = uploadButton.innerHTML;
+    uploadButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Uploading...';
+    uploadButton.disabled = true;
+
+    const formData = new FormData();
+    formData.append('stockfile', file);
+
+    try {
+        const response = await fetch('/.netlify/functions/process-stock-request', {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to process file.');
+        }
+
+        const data = await response.json();
+        renderStockGrid(data);
+        showToast('File processed successfully.', 'success');
+
+    } catch (error) {
+        showToast(error.message, 'error');
+    } finally {
+        uploadButton.innerHTML = originalButtonText;
+        uploadButton.disabled = false;
+    }
+}
+
+function renderStockGrid(data) {
+    const container = document.getElementById('stock-grid-container');
+    if (!container) return;
+
+    if (!data || data.length === 0) {
+        container.innerHTML = '<p>No data to display.</p>';
+        return;
+    }
+
+    let table = '<table class="table table-bordered table-striped table-sm data-table">';
+
+    // Headers
+    const headers = Object.keys(data[0]);
+    table += '<thead><tr>';
+    headers.forEach(header => {
+        table += `<th>${header}</th>`;
+    });
+    table += '</tr></thead>';
+
+    // Body
+    table += '<tbody>';
+    data.forEach(row => {
+        table += '<tr>';
+        headers.forEach(header => {
+            table += `<td>${row[header] || ''}</td>`;
+        });
+        table += '</tr>';
+    });
+    table += '</tbody>';
+
+    table += '</table>';
+
+    container.innerHTML = table;
+}
