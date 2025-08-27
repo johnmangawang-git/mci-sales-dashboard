@@ -751,11 +751,270 @@ function showToast(message, type = 'success') {
 
 // --- Request for Stock --- //
 
-document.body.addEventListener('click', function(event) {
-    if (event.target.id === 'upload-stock-file-button') {
-        handleStockFileUpload();
+// Auto-sync variables
+let stockAutoSyncInterval = null;
+let stockAutoSyncActive = false;
+
+// Add event listener for stock file upload button
+document.addEventListener('DOMContentLoaded', function() {
+    const uploadStockButton = document.getElementById('upload-stock-file-button');
+    const clearDataButton = document.getElementById('clear-stock-data');
+    const fileInput = document.getElementById('stock-file-input');
+    const autoSyncToggle = document.getElementById('stock-auto-sync-toggle');
+    const startAutoSyncButton = document.getElementById('start-stock-auto-sync');
+    const stopAutoSyncButton = document.getElementById('stop-stock-auto-sync');
+    const testSyncButton = document.getElementById('test-stock-sync');
+    
+    if (uploadStockButton) {
+        uploadStockButton.addEventListener('click', handleStockFileUpload);
+    }
+    
+    if (clearDataButton) {
+        clearDataButton.addEventListener('click', clearStockData);
+    }
+    
+    if (fileInput) {
+        fileInput.addEventListener('change', function() {
+            const statusDiv = document.getElementById('upload-status');
+            if (statusDiv) {
+                statusDiv.innerHTML = '';
+            }
+        });
+    }
+    
+    // Auto-sync event listeners
+    if (autoSyncToggle) {
+        autoSyncToggle.addEventListener('change', toggleAutoSyncSettings);
+    }
+    
+    if (startAutoSyncButton) {
+        startAutoSyncButton.addEventListener('click', startStockAutoSync);
+    }
+    
+    if (stopAutoSyncButton) {
+        stopAutoSyncButton.addEventListener('click', stopStockAutoSync);
+    }
+    
+    if (testSyncButton) {
+        testSyncButton.addEventListener('click', testStockSyncConnection);
     }
 });
+
+function clearStockData() {
+    const container = document.getElementById('stock-grid-container');
+    const clearButton = document.getElementById('clear-stock-data');
+    const fileInput = document.getElementById('stock-file-input');
+    const statusDiv = document.getElementById('upload-status');
+    const summaryDiv = document.getElementById('data-summary');
+    
+    if (container) {
+        container.innerHTML = '';
+    }
+    if (clearButton) {
+        clearButton.style.display = 'none';
+    }
+    if (fileInput) {
+        fileInput.value = '';
+    }
+    if (statusDiv) {
+        statusDiv.innerHTML = '';
+    }
+    if (summaryDiv) {
+        summaryDiv.innerHTML = '';
+    }
+    
+    showToast('Stock data cleared successfully.', 'info');
+}
+
+// Auto-sync functions
+function toggleAutoSyncSettings() {
+    const toggle = document.getElementById('stock-auto-sync-toggle');
+    const settings = document.getElementById('stock-auto-sync-settings');
+    
+    if (toggle && settings) {
+        settings.style.display = toggle.checked ? 'block' : 'none';
+        
+        if (!toggle.checked && stockAutoSyncActive) {
+            stopStockAutoSync();
+        }
+    }
+}
+
+function updateAutoSyncStatus(message, type = 'info') {
+    const statusDiv = document.getElementById('stock-auto-sync-status');
+    if (!statusDiv) return;
+    
+    const iconClass = {
+        'success': 'fas fa-check-circle text-success',
+        'error': 'fas fa-exclamation-circle text-danger',
+        'warning': 'fas fa-exclamation-triangle text-warning',
+        'info': 'fas fa-info-circle text-info',
+        'sync': 'fas fa-sync fa-spin text-primary'
+    }[type] || 'fas fa-info-circle text-info';
+    
+    statusDiv.innerHTML = `<small><i class="${iconClass} me-1"></i>${message}</small>`;
+}
+
+function startStockAutoSync() {
+    const filePath = document.getElementById('stock-file-path').value;
+    const interval = parseInt(document.getElementById('stock-sync-interval').value);
+    const startButton = document.getElementById('start-stock-auto-sync');
+    const stopButton = document.getElementById('stop-stock-auto-sync');
+    
+    if (!filePath.trim()) {
+        updateAutoSyncStatus('Please enter a valid file path', 'error');
+        showToast('Please enter a valid file path for auto-sync', 'error');
+        return;
+    }
+    
+    // Validate file path format
+    if (!filePath.toLowerCase().endsWith('.xlsx')) {
+        updateAutoSyncStatus('File path must point to an .xlsx file', 'error');
+        showToast('File path must point to an .xlsx file', 'error');
+        return;
+    }
+    
+    stockAutoSyncActive = true;
+    startButton.style.display = 'none';
+    stopButton.style.display = 'inline-block';
+    
+    updateAutoSyncStatus(`Auto-sync started (every ${interval} min)`, 'success');
+    showToast(`Auto-sync started for: ${filePath}`, 'success');
+    
+    // Perform initial sync
+    performStockAutoSync(filePath);
+    
+    // Set up interval
+    stockAutoSyncInterval = setInterval(() => {
+        performStockAutoSync(filePath);
+    }, interval * 60000); // Convert minutes to milliseconds
+}
+
+function stopStockAutoSync() {
+    const startButton = document.getElementById('start-stock-auto-sync');
+    const stopButton = document.getElementById('stop-stock-auto-sync');
+    
+    stockAutoSyncActive = false;
+    
+    if (stockAutoSyncInterval) {
+        clearInterval(stockAutoSyncInterval);
+        stockAutoSyncInterval = null;
+    }
+    
+    startButton.style.display = 'inline-block';
+    stopButton.style.display = 'none';
+    
+    updateAutoSyncStatus('Auto-sync stopped', 'warning');
+    showToast('Auto-sync stopped', 'info');
+}
+
+async function performStockAutoSync(filePath) {
+    if (!stockAutoSyncActive) return;
+    
+    updateAutoSyncStatus('Syncing data...', 'sync');
+    
+    try {
+        // Create a simulated file object for the serverless function
+        // Note: In a real-world scenario, you'd need a backend service to read files from the system
+        const response = await fetch('/.netlify/functions/process-stock-auto-sync', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ filePath: filePath })
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to sync data from file path');
+        }
+
+        const data = await response.json();
+        
+        if (data && data.length > 0) {
+            renderStockGrid(data);
+            updateAutoSyncStatus(`Last sync: ${new Date().toLocaleTimeString()}`, 'success');
+            
+            // Show clear button
+            const clearButton = document.getElementById('clear-stock-data');
+            if (clearButton) {
+                clearButton.style.display = 'inline-block';
+            }
+        } else {
+            updateAutoSyncStatus('No data found in sync', 'warning');
+        }
+
+    } catch (error) {
+        console.error('Auto-sync error:', error);
+        updateAutoSyncStatus(`Sync failed: ${error.message}`, 'error');
+        
+        // Don't stop auto-sync on error, just log it
+        if (stockAutoSyncActive) {
+            console.log('Auto-sync will retry on next interval');
+        }
+    }
+}
+
+async function testStockSyncConnection() {
+    const filePath = document.getElementById('stock-file-path').value;
+    const testButton = document.getElementById('test-stock-sync');
+    
+    if (!filePath.trim()) {
+        updateAutoSyncStatus('Please enter a file path to test', 'error');
+        showToast('Please enter a file path to test', 'error');
+        return;
+    }
+    
+    const originalText = testButton.innerHTML;
+    testButton.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Testing...';
+    testButton.disabled = true;
+    
+    updateAutoSyncStatus('Testing connection...', 'sync');
+    
+    try {
+        // Test the file path accessibility
+        const response = await fetch('/.netlify/functions/process-stock-auto-sync', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ filePath: filePath, testOnly: true })
+        });
+
+        if (response.ok) {
+            updateAutoSyncStatus('Connection test successful', 'success');
+            showToast('File path is accessible and valid', 'success');
+        } else {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Connection test failed');
+        }
+
+    } catch (error) {
+        console.error('Connection test error:', error);
+        updateAutoSyncStatus(`Test failed: ${error.message}`, 'error');
+        showToast(`Connection test failed: ${error.message}`, 'error');
+    } finally {
+        testButton.innerHTML = originalText;
+        testButton.disabled = false;
+    }
+}
+
+function updateUploadStatus(message, type = 'info') {
+    const statusDiv = document.getElementById('upload-status');
+    if (!statusDiv) return;
+    
+    const iconClass = {
+        'loading': 'fas fa-spinner fa-spin',
+        'success': 'fas fa-check-circle',
+        'error': 'fas fa-exclamation-circle',
+        'info': 'fas fa-info-circle'
+    }[type] || 'fas fa-info-circle';
+    
+    statusDiv.innerHTML = `
+        <div class="stock-upload-status ${type} mt-3">
+            <i class="${iconClass} me-2"></i>${message}
+        </div>
+    `;
+}
 
 async function handleStockFileUpload() {
     console.log('handleStockFileUpload called');
@@ -763,12 +1022,14 @@ async function handleStockFileUpload() {
     const file = fileInput.files[0];
 
     if (!file) {
+        updateUploadStatus('Please select a file.', 'error');
         showToast('Please select a file.', 'error');
         console.error('No file selected');
         return;
     }
 
     if (file.type !== 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') {
+        updateUploadStatus('Invalid file type. Please select a .xlsx file.', 'error');
         showToast('Invalid file type. Please select a .xlsx file.', 'error');
         console.error('Invalid file type:', file.type);
         return;
@@ -778,6 +1039,8 @@ async function handleStockFileUpload() {
     const originalButtonText = uploadButton.innerHTML;
     uploadButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Uploading...';
     uploadButton.disabled = true;
+    
+    updateUploadStatus('Uploading and processing file...', 'loading');
 
     const formData = new FormData();
     formData.append('stockfile', file);
@@ -799,11 +1062,25 @@ async function handleStockFileUpload() {
 
         const data = await response.json();
         console.log('Data received:', data);
-        renderStockGrid(data);
-        showToast('File processed successfully.', 'success');
+        
+        if (data && data.length > 0) {
+            renderStockGrid(data);
+            updateUploadStatus(`File processed successfully. ${data.length} rows loaded.`, 'success');
+            showToast('File processed successfully.', 'success');
+            
+            // Show clear button
+            const clearButton = document.getElementById('clear-stock-data');
+            if (clearButton) {
+                clearButton.style.display = 'inline-block';
+            }
+        } else {
+            updateUploadStatus('No valid data found in the uploaded file.', 'error');
+            showToast('No valid data found in the uploaded file.', 'error');
+        }
 
     } catch (error) {
         console.error('Error during file upload:', error);
+        updateUploadStatus(`Error: ${error.message}`, 'error');
         showToast(error.message, 'error');
     } finally {
         uploadButton.innerHTML = originalButtonText;
@@ -813,35 +1090,100 @@ async function handleStockFileUpload() {
 
 function renderStockGrid(data) {
     const container = document.getElementById('stock-grid-container');
-    if (!container) return;
-
-    if (!data || data.length === 0) {
-        container.innerHTML = '<p>No data to display.</p>';
+    const summaryDiv = document.getElementById('data-summary');
+    
+    if (!container) {
+        console.error('Stock grid container not found');
         return;
     }
 
-    let table = '<table class="table table-bordered table-striped table-sm data-table">';
+    // Clear previous content
+    container.innerHTML = '';
+    if (summaryDiv) {
+        summaryDiv.innerHTML = '';
+    }
 
-    // Headers
-    const headers = Object.keys(data[0]);
+    if (!data || data.length === 0) {
+        container.innerHTML = '<div class="alert alert-info m-3"><i class="fas fa-info-circle me-2"></i>No data found starting from row 13. Please ensure your Excel file has data in the correct format.</div>';
+        return;
+    }
+
+    // Get all headers from the first row (preserving exact Excel structure)
+    const firstRow = data[0];
+    const headers = Object.keys(firstRow);
+    
+    if (headers.length === 0) {
+        container.innerHTML = '<div class="alert alert-danger m-3"><i class="fas fa-times-circle me-2"></i>No headers found in row 13 of the Excel file.</div>';
+        return;
+    }
+
+    // Update summary - show exact Excel structure info
+    if (summaryDiv) {
+        summaryDiv.innerHTML = `${data.length} rows × ${headers.length} columns (Excel format preserved)`;
+    }
+
+    let table = '<div class="table-responsive">';
+    table += '<table class="table table-bordered table-striped table-hover table-sm data-table mb-0">';
+
+    // Headers from row 13 of Excel
     table += '<thead><tr>';
-    headers.forEach(header => {
-        table += `<th>${header}</th>`;
+    headers.forEach((header, index) => {
+        const columnLetter = String.fromCharCode(65 + index); // A, B, C, etc.
+        const displayHeader = header.trim() === '' ? `Column ${columnLetter}` : header;
+        table += `<th scope="col" title="Column ${columnLetter}: ${escapeHtml(header)}">${escapeHtml(displayHeader)}</th>`;
     });
     table += '</tr></thead>';
 
-    // Body
+    // Body - show all data exactly as it appears in Excel
     table += '<tbody>';
-    data.forEach(row => {
+    data.forEach((row, rowIndex) => {
         table += '<tr>';
-        headers.forEach(header => {
-            table += `<td>${row[header] || ''}</td>`;
+        headers.forEach((header, colIndex) => {
+            const cellValue = row[header];
+            const displayValue = cellValue !== undefined && cellValue !== null ? cellValue : '';
+            const columnLetter = String.fromCharCode(65 + colIndex);
+            
+            // Add special styling for columns A and B (fixed data columns)
+            const isFixedColumn = colIndex === 0 || colIndex === 1;
+            const cellClass = isFixedColumn ? 'table-warning' : '';
+            const cellTitle = `${columnLetter}${rowIndex + 14}: ${String(displayValue)}`; // +14 because data starts from row 14 (after header row 13)
+            
+            table += `<td class="${cellClass}" title="${escapeHtml(cellTitle)}">${escapeHtml(String(displayValue))}</td>`;
         });
         table += '</tr>';
     });
     table += '</tbody>';
-
     table += '</table>';
+    table += '</div>';
 
-    container.innerHTML = table;
+    // Add detailed summary info
+    const summaryInfo = `
+        <div class="px-3 py-2 bg-light border-top">
+            <small class="text-muted">
+                <i class="fas fa-info-circle me-1"></i>
+                Displaying Excel data starting from <strong>Row 13</strong> (headers) with ${data.length} data rows and ${headers.length} columns
+                <span class="ms-3">
+                    <i class="fas fa-file-excel me-1"></i>
+                    Columns A & B contain fixed data (highlighted in yellow)
+                </span>
+                <span class="ms-3">
+                    <i class="fas fa-table me-1"></i>
+                    Preserving exact Excel structure
+                </span>
+            </small>
+        </div>
+    `;
+    
+    container.innerHTML = table + summaryInfo;
+    
+    // Scroll to the table
+    container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
+
+// Helper function to escape HTML
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+

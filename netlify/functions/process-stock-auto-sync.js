@@ -1,8 +1,9 @@
 const xlsx = require('xlsx');
-const busboy = require('busboy');
+const fs = require('fs');
+const path = require('path');
 
 exports.handler = async (event, context) => {
-  console.log('Function invoked');
+  console.log('Auto-sync function invoked');
   
   const headers = {
     'Access-Control-Allow-Origin': '*',
@@ -30,28 +31,63 @@ exports.handler = async (event, context) => {
   }
 
   try {
-    console.log('Parsing multipart form...');
-    const fields = await parseMultipartForm(event);
-    console.log('Parsed fields:', Object.keys(fields));
-    const file = fields.stockfile;
+    const requestBody = JSON.parse(event.body);
+    const { filePath, testOnly = false } = requestBody;
 
-    if (!file) {
-      console.error('No file found in form data');
-      return { 
-        statusCode: 400, 
+    if (!filePath) {
+      return {
+        statusCode: 400,
         headers,
-        body: JSON.stringify({ error: 'No file uploaded.' })
+        body: JSON.stringify({ error: 'File path is required' })
       };
     }
 
-    console.log('File details:', { 
-      filename: file.filename, 
-      mimeType: file.mimeType, 
-      size: file.content.length 
-    });
+    console.log('Processing file path:', filePath);
+    console.log('Test only mode:', testOnly);
 
-    console.log('Reading workbook...');
-    const workbook = xlsx.read(file.content, { type: 'buffer' });
+    // Validate file path
+    if (!filePath.toLowerCase().endsWith('.xlsx')) {
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({ error: 'File must be an Excel (.xlsx) file' })
+      };
+    }
+
+    // Check if file exists and is accessible
+    try {
+      await fs.promises.access(filePath, fs.constants.R_OK);
+    } catch (accessError) {
+      console.error('File access error:', accessError);
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({ 
+          error: `Cannot access file: ${filePath}. Please check the path and permissions.`,
+          details: accessError.message
+        })
+      };
+    }
+
+    // If this is just a test, return success
+    if (testOnly) {
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ 
+          message: 'File is accessible',
+          filePath: filePath,
+          test: true
+        })
+      };
+    }
+
+    // Read and process the Excel file
+    console.log('Reading Excel file...');
+    const fileBuffer = await fs.promises.readFile(filePath);
+    
+    console.log('Parsing workbook...');
+    const workbook = xlsx.read(fileBuffer, { type: 'buffer' });
     console.log('Workbook sheets:', workbook.SheetNames);
     
     const sheetName = workbook.SheetNames[0];
@@ -59,7 +95,6 @@ exports.handler = async (event, context) => {
 
     console.log('Converting sheet to JSON...');
     // Extract data starting from row 13 (line 13) as specified
-    // Row 13 contains the headers, subsequent rows contain data
     const data = xlsx.utils.sheet_to_json(worksheet, {
       range: 12, // Start from row 13 (0-based index 12)
       header: 1, // Use first row in range as headers
@@ -95,7 +130,7 @@ exports.handler = async (event, context) => {
       return rowData;
     });
 
-    console.log('Successfully processed file, returning', jsonData.length, 'rows with exact Excel structure');
+    console.log('Successfully processed auto-sync file, returning', jsonData.length, 'rows');
     return {
       statusCode: 200,
       headers,
@@ -103,71 +138,14 @@ exports.handler = async (event, context) => {
     };
 
   } catch (error) {
-    console.error('Error in function execution:', error);
+    console.error('Error in auto-sync function execution:', error);
     return {
       statusCode: 500,
       headers,
       body: JSON.stringify({ 
-        error: error.message || 'An error occurred while processing the file.',
+        error: error.message || 'An error occurred while processing the auto-sync.',
         details: process.env.NODE_ENV === 'development' ? error.stack : undefined
       })
     };
   }
 };
-
-function parseMultipartForm(event) {
-  return new Promise((resolve, reject) => {
-    try {
-      const bb = busboy({ 
-        headers: {
-          ...event.headers,
-          'content-type': event.headers['content-type'] || event.headers['Content-Type']
-        }
-      });
-      const fields = {};
-
-      bb.on('file', (name, file, info) => {
-        const { filename, mimeType } = info;
-        console.log('Receiving file:', { name, filename, mimeType });
-        let content = [];
-        
-        file.on('data', (data) => {
-          content.push(data);
-        });
-        
-        file.on('end', () => {
-          fields[name] = {
-            filename: filename,
-            mimeType: mimeType,
-            content: Buffer.concat(content)
-          };
-          console.log('File received:', { name, size: fields[name].content.length });
-        });
-      });
-
-      bb.on('field', (name, val) => {
-        console.log('Field received:', { name, val });
-        fields[name] = val;
-      });
-
-      bb.on('close', () => {
-        console.log('Busboy parsing completed');
-        resolve(fields);
-      });
-
-      bb.on('error', err => {
-        console.error('Busboy error:', err);
-        reject(err);
-      });
-
-      const body = event.isBase64Encoded ? 
-        Buffer.from(event.body, 'base64') : 
-        Buffer.from(event.body, 'binary');
-      
-      bb.end(body);
-    } catch (error) {
-      console.error('Error in parseMultipartForm:', error);
-      reject(error);
-    }
-  });
-}
